@@ -1,11 +1,7 @@
 // Config for FirstRep – Exploration build (GitHub Pages).
-// NOTE: Keys in client code are fine for exploration, not for production.
-
 window.FIRSTREP_CONFIG = {
-  // Your master key (as shared). Rotate for prod or proxy via server.
   JSONBIN_MASTER_KEY: "$2a$10$8AI1P1rXZzRftjDaN8IlLutsn9gYXw/MWSAptBt4A2kKF8xpquCUm",
-  // Optional: paste an existing bin ID; else we auto-create one on first sync.
-  JSONBIN_BIN_ID: "",
+  JSONBIN_BIN_ID: "", // optional: paste an existing bin id
 };
 
 window.FIRSTREP_CONST = {
