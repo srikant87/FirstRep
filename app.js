@@ -120,8 +120,8 @@ const defaultState = {
   name: "",
   phone: "",
   profile: { condition: "", severity: 5 },
-  plan: null,           // { id, name, startDate, days, exercises[] }
-  logs: {},             // dateStr -> { pain, completions: { [exerciseId]: boolean }, saved: true }
+  plan: null,
+  logs: {},
   remote: { masterKey: "", binId: "" },
 };
 function loadState() {
@@ -130,9 +130,7 @@ function loadState() {
     if (!raw) return defaultState;
     const parsed = JSON.parse(raw);
     return { ...defaultState, ...parsed };
-  } catch {
-    return defaultState;
-  }
+  } catch { return defaultState; }
 }
 function saveState(st) { localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); }
 
@@ -145,7 +143,6 @@ function App() {
 
   useEffect(() => { saveState(state); }, [state]);
   useEffect(() => {
-    // prime JSONBin values from config or previous session
     const k = JSONBin.getKey();
     const id = JSONBin.getBinId();
     setState(s => ({ ...s, remote: { ...s.remote, masterKey: k, binId: id } }));
@@ -154,115 +151,48 @@ function App() {
   const progressData = useMemo(() => buildProgressData(state), [state]);
   const adherence = useMemo(() => buildAdherenceData(state), [state]);
 
-  const startAfterIdentity = () => {
-    Analytics.log("identity_submit", { name: state.name });
-    setStep(2);
-  };
+  const startAfterIdentity = () => { Analytics.log("identity_submit", { name: state.name }); setStep(2); };
 
   const generatePlan = async () => {
     const { condition, severity } = state.profile;
-    const exercises = (EXERCISE_LIBRARY[condition] || []).map(e => ({
-      id: uid("ex"), name: e.name, query: e.query, sets: 2, reps: 10, frequency: "Daily",
-    }));
+    const exercises = (EXERCISE_LIBRARY[condition] || []).map(e => ({ id: uid("ex"), name: e.name, query: e.query, sets: 2, reps: 10, frequency: "Daily" }));
     const plan = { id: uid("plan"), name: `${condition} – Recovery Plan`, startDate: todayStr(), days: estimateDays(condition, severity), exercises };
-    setState(s => ({ ...s, plan }));
-    Analytics.log("plan_generated", { condition, severity, days: plan.days });
-    setStep(3);
+    setState(s => ({ ...s, plan })); Analytics.log("plan_generated", { condition, severity, days: plan.days }); setStep(3);
     void syncUpstream("plan_generated");
   };
 
   async function syncUpstream(reason) {
     const { name, phone, profile, plan, logs, remote } = state;
     const masterKey = remote.masterKey || JSONBIN_MASTER_KEY;
-    if (!masterKey || !name || !isValidIndianMobile(phone)) return; // guardrails
+    if (!masterKey || !name || !isValidIndianMobile(phone)) return;
     try {
       setBusyRemote(true); setRemoteMsg("Syncing…");
       let binId = remote.binId || JSONBIN_BIN_ID || "";
       if (!binId) binId = await JSONBin.ensureBin(masterKey);
-      if (binId && binId !== remote.binId) {
-        JSONBin.setBinId(binId);
-        setState(s => ({ ...s, remote: { ...s.remote, binId } }));
-      }
+      if (binId && binId !== remote.binId) { JSONBin.setBinId(binId); setState(s => ({ ...s, remote: { ...s.remote, binId } })); }
       const record = await JSONBin.read(masterKey, binId).catch(() => ({ users: {} }));
       const users = record.users || {};
       const key = `${String(name).trim().toLowerCase()}|${String(phone).trim()}`;
       users[key] = { name, phone, profile, plan, logs, updatedAt: new Date().toISOString(), reason };
       await JSONBin.write(masterKey, binId, { users });
-      setRemoteMsg("Synced");
-      setTimeout(() => setRemoteMsg(""), 1500);
+      setRemoteMsg("Synced"); setTimeout(() => setRemoteMsg(""), 1500);
     } catch (e) {
-      setRemoteMsg("Sync failed");
-      setTimeout(() => setRemoteMsg(""), 2000);
-    } finally {
-      setBusyRemote(false);
-    }
+      setRemoteMsg("Sync failed"); setTimeout(() => setRemoteMsg(""), 2000);
+    } finally { setBusyRemote(false); }
   }
 
-  const clearAll = () => {
-    if (confirm("Reset local plan and logs?")) {
-      setState(defaultState);
-      Analytics.log("reset_app");
-    }
-  };
+  const clearAll = () => { if (confirm("Reset local plan and logs?")) { setState(defaultState); Analytics.log("reset_app"); } };
 
   return (
     <div className="min-h-screen">
       <NavBar onExportEvents={() => Analytics.export()} onReset={clearAll} remoteMsg={remoteMsg} />
       {step === 0 && <Landing onGetStarted={() => setStep(1)} />}
-
-      {step === 1 && (
-        <Identity
-          name={state.name}
-          phone={state.phone}
-          setName={(name) => setState(s => ({ ...s, name }))}
-          setPhone={(phone) => setState(s => ({ ...s, phone }))}
-          onNext={startAfterIdentity}
-        />
-      )}
-
-      {step === 2 && (
-        <Assessment
-          state={state}
-          setState={setState}
-          onBack={() => setStep(1)}
-          onGenerate={generatePlan}
-        />
-      )}
-
-      {step === 3 && (
-        <Planner
-          state={state}
-          setState={setState}
-          onBack={() => setStep(2)}
-          progressData={progressData}
-          adherence={adherence}
-          onGoConsult={() => setStep(4)}
-          onExportPlan={() => {
-            if (!state.plan) return;
-            const a = document.createElement("a");
-            a.href = "data:text/plain;charset=utf-8," + encodeURIComponent(JSON.stringify(state.plan, null, 2));
-            a.download = `firstrep-plan-${state.plan.id}.json`;
-            a.click();
-            Analytics.log("plan_exported");
-          }}
-          onImportPlan={(json) => {
-            try {
-              const p = JSON.parse(json);
-              if (!p || !p.exercises) throw new Error("Invalid plan");
-              setState(s => ({ ...s, plan: p }));
-              Analytics.log("plan_imported", { exercises: p.exercises.length });
-              void syncUpstream("plan_imported");
-            } catch {
-              alert("Could not parse plan JSON.");
-            }
-          }}
-          onSync={() => syncUpstream("manual_sync")}
-          busyRemote={busyRemote}
-        />
-      )}
-
-      {step === 4 && <Consult onBack={() => setStep(3)} />}
-
+      {step === 1 && <Identity name={state.name} phone={state.phone} setName={(name)=>setState(s=>({...s,name}))} setPhone={(phone)=>setState(s=>({...s,phone}))} onNext={startAfterIdentity} />}
+      {step === 2 && <Assessment state={state} setState={setState} onBack={()=>setStep(1)} onGenerate={generatePlan} />}
+      {step === 3 && <Planner state={state} setState={setState} onBack={()=>setStep(2)} progressData={progressData} adherence={adherence} onGoConsult={()=>setStep(4)} onExportPlan={()=>{
+        if(!state.plan) return; const a=document.createElement("a"); a.href="data:text/plain;charset=utf-8,"+encodeURIComponent(JSON.stringify(state.plan,null,2)); a.download=`firstrep-plan-${state.plan.id}.json`; a.click(); Analytics.log("plan_exported");
+      }} onImportPlan={(json)=>{ try{ const p=JSON.parse(json); if(!p||!p.exercises) throw new Error("Invalid plan"); setState(s=>({...s,plan:p})); Analytics.log("plan_imported",{exercises:p.exercises.length}); void syncUpstream("plan_imported"); }catch{ alert("Could not parse plan JSON."); } }} onSync={()=>syncUpstream("manual_sync")} busyRemote={busyRemote} />}
+      {step === 4 && <Consult onBack={()=>setStep(3)} />}
       <Footer />
     </div>
   );
@@ -316,9 +246,7 @@ function Landing({ onGetStarted }) {
               </div>
             ))}
           </div>
-          <button onClick={onGetStarted} className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-sky-600 text-white hover:bg-sky-700 shadow">
-            Get started
-          </button>
+          <button onClick={onGetStarted} className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-sky-600 text-white hover:bg-sky-700 shadow">Get started</button>
         </div>
         <div>
           <div className="rounded-3xl border bg-white p-5 shadow-sm">
@@ -405,8 +333,7 @@ function Planner({ state, setState, onBack, progressData, adherence, onGoConsult
     setState(s=>({ ...s, logs:{ ...s.logs, [d]: { pain: todayDraft.pain, completions:{ ...(todayDraft.completions||{}) }, saved:true } } }));
     Analytics.log("save_progress", { pain: todayDraft.pain, completed: Object.values(todayDraft.completions||{}).filter(Boolean).length });
     setJustSaved(true); setTimeout(()=>setJustSaved(false), 1500);
-    // remote sync (idempotent upsert by name|phone)
-    const masterKey = state.remote.masterKey || JSONBin_MASTER_KEY;
+    const masterKey = state.remote.masterKey || JSONBIN_MASTER_KEY;
     if (masterKey && state.name && isValidIndianMobile(state.phone)) { await onSync(); }
   };
 
@@ -489,7 +416,7 @@ function Planner({ state, setState, onBack, progressData, adherence, onGoConsult
             <div className="rounded-2xl border p-3 bg-white mt-4">
               <div className="text-xs text-slate-500 mb-1">Adherence (last 14 days)</div>
               <div className="h-44">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%">
                   <BarChart data={adherence}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
@@ -570,16 +497,8 @@ function Consult({ onBack }) {
     ].join("\n");
   }
 
-  const ics = useMemo(()=> makeICS({
-    title:"FirstRep Physio Consult (45 mins)",
-    description:`Virtual consult. Meet link: ${meetLink||"(add after opening meet.new)"}`,
-    start:startDT, end:endDT, location: meetLink||"Virtual (Google Meet)"
-  }), [startDT,endDT,meetLink]);
-  const gcal = useMemo(()=> toGoogleCalendarLink({
-    title:"FirstRep Physio Consult (45 mins)",
-    description:`Virtual consult. Meet link: ${meetLink||"(add after opening meet.new)"}`,
-    start:startDT, end:endDT, location: meetLink||"Virtual (Google Meet)"
-  }), [startDT,endDT,meetLink]);
+  const ics = useMemo(()=> makeICS({ title:"FirstRep Physio Consult (45 mins)", description:`Virtual consult. Meet link: ${meetLink||"(add after opening meet.new)"}`, start:startDT, end:endDT, location: meetLink||"Virtual (Google Meet)" }), [startDT,endDT,meetLink]);
+  const gcal = useMemo(()=> toGoogleCalendarLink({ title:"FirstRep Physio Consult (45 mins)", description:`Virtual consult. Meet link: ${meetLink||"(add after opening meet.new)"}`, start:startDT, end:endDT, location: meetLink||"Virtual (Google Meet)" }), [startDT,endDT,meetLink]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-8 pb-20">
