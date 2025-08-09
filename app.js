@@ -1,5 +1,8 @@
 const { useEffect, useMemo, useRef, useState } = React;
-const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } = Recharts;
+const {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar
+} = window.Recharts;
 
 const { JSONBIN_MASTER_KEY, JSONBIN_BIN_ID } = window.FIRSTREP_CONFIG;
 const { STORAGE_KEY, EVENT_LOG_KEY, JSONBIN_ID_KEY, JSONBIN_KEY_KEY } = window.FIRSTREP_CONST;
