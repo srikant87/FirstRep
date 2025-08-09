@@ -4,19 +4,19 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>FirstRep – Physio-Guided Recovery</title>
-  <meta name="description" content="Physiotherapist-informed recovery routines with daily check-ins, charts, and optional remote consults."/>
+  <meta name="description" content="Physiotherapist-informed recovery routines with daily check-ins, charts, remote consults, and JSONBin sync."/>
 
-  <!-- Tailwind (CDN) -->
+  <!-- Tailwind (Play CDN: fine for prototype) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- React + ReactDOM (UMD) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-  <!-- Recharts (UMD) -->
+  <!-- Recharts (UMD) MUST load before Babel/our JSX -->
   <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
 
-  <!-- Babel for JSX (must be before our text/babel block) -->
+  <!-- Babel for JSX transform (keep before our text/babel block) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
@@ -28,14 +28,17 @@
 <body class="bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900 min-h-screen">
   <div id="root"></div>
 
-  <!-- App (inline, transpiled by Babel in-browser) -->
+  <!-- App (inline, Babel-transpiled in browser) -->
   <script type="text/babel" data-presets="env,react">
     const { useEffect, useMemo, useRef, useState } = React;
-    const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } = Recharts;
+    const {
+      LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+      ResponsiveContainer, BarChart, Bar
+    } = window.Recharts;
 
     /* ---------- Config ---------- */
     const JSONBIN_MASTER_KEY = "$2a$10$8AI1P1rXZzRftjDaN8IlLutsn9gYXw/MWSAptBt4A2kKF8xpquCUm"; // exploration only
-    const JSONBIN_BIN_ID = ""; // optional: paste an existing Bin ID to reuse
+    const JSONBIN_BIN_ID = ""; // optional: paste an existing Bin ID
 
     const STORAGE_KEY = "firstrep_app_state_single_v1";
     const EVENT_LOG_KEY = "firstrep_event_log_single_v1";
@@ -44,14 +47,22 @@
 
     /* ---------- Utils ---------- */
     const todayStr = () => new Date().toISOString().slice(0,10);
-    const fmtDate = d => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    const uid = (p="id") => `${p}_${Math.random().toString(36).slice(2,9)}`;
+    const fmtDate  = d => new Date(d).toLocaleDateString(undefined, { month:"short", day:"numeric" });
+    const uid      = (p="id") => `${p}_${Math.random().toString(36).slice(2,9)}`;
     const isValidIndianMobile = s => /^[6-9][0-9]{9}$/.test(s) && !/^([0-9])\1{9}$/.test(s);
 
     /* ---------- Analytics (local) ---------- */
     const Analytics = {
-      log(evt,payload={}){ try{ const rec={t:new Date().toISOString(),evt,payload}; const arr=JSON.parse(localStorage.getItem(EVENT_LOG_KEY)||"[]"); arr.push(rec); localStorage.setItem(EVENT_LOG_KEY, JSON.stringify(arr)); }catch{} },
-      export(){ const arr=JSON.parse(localStorage.getItem(EVENT_LOG_KEY)||"[]"); const a=document.createElement("a"); a.href="data:text/plain;charset=utf-8,"+encodeURIComponent(JSON.stringify(arr,null,2)); a.download=`firstrep-events-${todayStr()}.json`; a.click(); }
+      log(evt,payload={}){ try{
+        const rec={t:new Date().toISOString(),evt,payload};
+        const arr=JSON.parse(localStorage.getItem(EVENT_LOG_KEY)||"[]");
+        arr.push(rec); localStorage.setItem(EVENT_LOG_KEY, JSON.stringify(arr));
+      }catch{} },
+      export(){ const arr=JSON.parse(localStorage.getItem(EVENT_LOG_KEY)||"[]");
+        const a=document.createElement("a");
+        a.href="data:text/plain;charset=utf-8,"+encodeURIComponent(JSON.stringify(arr,null,2));
+        a.download=`firstrep-events-${todayStr()}.json`; a.click();
+      }
     };
 
     /* ---------- JSONBin client ---------- */
@@ -63,18 +74,27 @@
 
       async ensureBin(masterKey){
         let id=this.getBinId(); if(id) return id;
-        const res=await fetch("https://api.jsonbin.io/v3/bins",{method:"POST",headers:{"Content-Type":"application/json","X-Master-Key":masterKey},body:JSON.stringify({users:{}})});
+        const res=await fetch("https://api.jsonbin.io/v3/bins",{
+          method:"POST",
+          headers:{ "Content-Type":"application/json","X-Master-Key":masterKey },
+          body:JSON.stringify({ users:{} })
+        });
         if(!res.ok) throw new Error("JSONBin create failed");
-        const data=await res.json(); id=data?.metadata?.id||data?.id; if(!id) throw new Error("No Bin ID");
+        const data=await res.json();
+        id=data?.metadata?.id||data?.id; if(!id) throw new Error("No Bin ID");
         this.setBinId(id); return id;
       },
       async read(masterKey,binId){
-        const res=await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{headers:{"X-Master-Key":masterKey}});
+        const res=await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{ headers:{ "X-Master-Key":masterKey }});
         if(!res.ok) throw new Error("JSONBin read failed");
         const json=await res.json(); return json?.record||{};
       },
       async write(masterKey,binId,record){
-        const res=await fetch(`https://api.jsonbin.io/v3/b/${binId}`,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":masterKey},body:JSON.stringify(record)});
+        const res=await fetch(`https://api.jsonbin.io/v3/b/${binId}`,{
+          method:"PUT",
+          headers:{ "Content-Type":"application/json","X-Master-Key":masterKey },
+          body:JSON.stringify(record)
+        });
         if(!res.ok) throw new Error("JSONBin update failed");
         return await res.json();
       },
@@ -126,18 +146,18 @@
       ],
     };
     const CONDITION_BASE_DAYS = {"Lower Back Pain":28,"Knee Pain":35,"Shoulder Pain":28,"Neck Pain":21,"Tennis Elbow":42,"Plantar Fasciitis":45,"Hamstring Strain":28};
-    const estimateDays=(condition,severity)=>Math.round((CONDITION_BASE_DAYS[condition]||28)*(0.65+0.06*severity));
+    const estimateDays = (condition,severity)=>Math.round((CONDITION_BASE_DAYS[condition]||28)*(0.65+0.06*severity));
 
     /* ---------- State ---------- */
     const defaultState = {
       name:"", phone:"",
       profile:{condition:"", severity:5},
       plan:null,
-      logs:{}, // dateKey -> {pain, completions:{[exId]:bool}, saved:true}
+      logs:{},                 // date -> { pain, completions:{[exId]:bool}, saved:true }
       remote:{masterKey:"", binId:""},
     };
-    const loadState=()=>{ try{ const raw=localStorage.getItem(STORAGE_KEY); return raw?{...defaultState, ...JSON.parse(raw)}:defaultState; }catch{ return defaultState; } };
-    const saveState=st=>localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
+    const loadState = ()=>{ try{ const raw=localStorage.getItem(STORAGE_KEY); return raw?{...defaultState, ...JSON.parse(raw)}:defaultState; }catch{ return defaultState; } };
+    const saveState = st => localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
 
     /* ---------- App ---------- */
     function App(){
@@ -147,14 +167,14 @@
       const [remoteMsg,setRemoteMsg]=useState("");
 
       useEffect(()=>{ saveState(state); },[state]);
-      useEffect(()=>{ // hydrate JSONBin keys from config/local
+      useEffect(()=>{ // hydrate JSONBin creds from config/local
         const k=localStorage.getItem(JSONBIN_KEY_KEY) || JSONBIN_MASTER_KEY || "";
         const id=localStorage.getItem(JSONBIN_ID_KEY) || JSONBIN_BIN_ID || "";
         setState(s=>({...s, remote:{...s.remote, masterKey:k, binId:id}}));
       },[]);
 
       const progressData = useMemo(()=>buildProgressData(state),[state]);
-      const adherence = useMemo(()=>buildAdherenceData(state),[state]);
+      const adherence    = useMemo(()=>buildAdherenceData(state),[state]);
 
       const startAfterIdentity=()=>{ Analytics.log("identity_submit",{name:state.name}); setStep(2); };
 
@@ -169,7 +189,7 @@
       async function syncUpstream(reason){
         const {name,phone,profile,plan,logs,remote}=state;
         const masterKey=remote.masterKey || JSONBIN_MASTER_KEY;
-        if(!masterKey || !name || !isValidIndianMobile(phone)) return;
+        if(!masterKey || !name || !isValidIndianMobile(phone)) return; // guardrails
         try{
           setBusyRemote(true); setRemoteMsg("Syncing…");
           let binId=remote.binId || JSONBIN_BIN_ID || "";
