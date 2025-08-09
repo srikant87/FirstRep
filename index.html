@@ -1,91 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>FirstRep Diagnostics</title>
-  <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; background: #f8fafc; color: #0f172a; }
-    .ok { color: #065f46; } .fail { color: #b91c1c; } .warn { color: #92400e; }
-    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin:12px 0; }
-    code { background:#f1f5f9; padding:2px 6px; border-radius:6px; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FirstRep – Injury Recovery</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <h1>FirstRep Diagnostics</h1>
-  <div id="results" class="card">Running checks…</div>
-  <canvas id="smoke" width="320" height="80" class="card"></canvas>
-  <div class="card">
-    <button id="unregisterSW">Unregister Service Worker (if any)</button>
-  </div>
-  <script>
-    (function() {
-      const out = [];
-      const log = (ok, label, msg="") => {
-        out.push(`<div class="${ok?'ok':'fail'}">${ok?'✓':'✗'} <strong>${label}</strong> ${msg?('<span class="warn">– '+msg+'</span>'):''}</div>`);
-      };
+  <div id="root"></div>
 
-      // 0) Basic DOM
-      log(!!document.getElementById('results'), 'DOM loaded');
+  <!-- React + ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-      // 1) Network reachability (no CORS drama): fetch a tiny public text file
-      const netTest = fetch('https://unpkg.com/@babel/standalone/README.md', { method:'GET' })
-        .then(r => log(r.ok, 'Network to CDN (unpkg.com)', r.ok ? '' : ('status '+r.status)))
-        .catch(e => log(false, 'Network to CDN (unpkg.com)', e.message));
-
-      // 2) Third-party script allowance check via dynamic inject (CSP will block if too strict)
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/react@18/umd/react.development.js';
-      script.onload = () => log(!!window.React, 'React global available');
-      script.onerror = () => log(false, 'React script load failed', 'Likely CSP or network block');
-      document.head.appendChild(script);
-
-      // 3) Inline script allowance (CSP 'unsafe-inline')
-      try {
-        // If CSP blocks inline, this will still run (we’re already inline) but report policy via meta is impossible.
-        // We just assert JS execution really happens:
-        log(true, 'Inline scripts executing');
-      } catch(e) {
-        log(false, 'Inline scripts blocked', e.message);
-      }
-
-      // 4) Canvas smoke test (proves painting path)
-      try {
-        const ctx = document.getElementById('smoke').getContext('2d');
-        ctx.fillStyle = '#0ea5e9'; ctx.fillRect(0,0,320,80);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 20px system-ui'; ctx.fillText('Canvas OK', 10, 50);
-        log(true, 'Canvas render');
-      } catch(e) {
-        log(false, 'Canvas render', e.message);
-      }
-
-      // Print results after async test
-      Promise.resolve(netTest).finally(() => {
-        document.getElementById('results').innerHTML = out.join('');
-      });
-
-      // SW cleanup button
-      document.getElementById('unregisterSW').onclick = async () => {
-        if ('serviceWorker' in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const r of regs) await r.unregister();
-          alert('Service workers unregistered. Hard refresh (Cmd/Ctrl+Shift+R).');
-        } else {
-          alert('No service worker API found.');
-        }
-      };
-    })();
+  <!-- Recharts with fallback -->
+  <script id="recharts-cdn"
+    src="https://unpkg.com/recharts/umd/Recharts.min.js"
+    onerror="(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/recharts/umd/Recharts.min.js';document.head.appendChild(s);})();">
   </script>
 
-  <div class="card">
-    <h3>Next actions based on what you see:</h3>
-    <ul>
-      <li><strong>If React script load fails:</strong> your <em>CSP</em> or proxy (Cloudflare, etc.) is blocking third-party scripts. Allow <code>https://unpkg.com</code> and <code>https://cdn.tailwindcss.com</code> in <code>script-src</code> <em>or</em> remove CDNs and serve compiled, local assets.</li>
-      <li><strong>If Network to CDN fails:</strong> corporate firewall or DNS filtering is blocking CDNs.</li>
-      <li><strong>If everything above passes but app still blank:</strong> your app bundle has a runtime error. Open Console; share the first red error line.</li>
-      <li><strong>If even this page is blank:</strong> hosting is serving empty content. Re-check: Pages source (root vs /docs), <code>.nojekyll</code>, <code>CNAME</code>, A records (4 GitHub IPs), proxy off (grey-cloud on Cloudflare), HTTPS issuance.</li>
-    </ul>
-  </div>
+  <!-- App data/config -->
+  <script src="./data.js"></script>
+
+  <!-- App code -->
+  <script src="./app.js?v=1"></script>
 </body>
 </html>
