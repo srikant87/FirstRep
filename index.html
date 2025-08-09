@@ -11,12 +11,139 @@
     <h1>FirstRep</h1>
     <p class="subtitle">Your first reps to recovery</p>
   </header>
+
   <main id="app">
-    <p>Prototype placeholder — original version included onboarding, plan generation, check-ins, and consult flows.</p>
+    <!-- Step 1: Onboarding -->
+    <section id="step-onboarding" class="card step active">
+      <h2>Welcome</h2>
+      <p>Enter your mobile number to get started.</p>
+      <div class="form-row">
+        <label>Mobile Number</label>
+        <input id="phone" type="tel" placeholder="+91 9XXXXXXXXX"/>
+      </div>
+      <button id="send-otp">Send OTP</button>
+      <div id="otp-block" class="otp-block hidden">
+        <p>We sent a 4-digit code. Enter it below to continue.</p>
+        <input id="otp" type="text" maxlength="4" placeholder="••••"/>
+        <button id="verify-otp">Verify</button>
+        <p class="hint">Prototype note: any 4 digits will pass.</p>
+      </div>
+    </section>
+
+    <!-- Step 2: Outcome & Intake -->
+    <section id="step-intake" class="card step">
+      <h2>Your Priority Outcome</h2>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Body Area</label>
+          <select id="body-area">
+            <option value="" disabled selected>Select one</option>
+            <option value="knee">Knee</option>
+            <option value="lower_back">Lower Back</option>
+            <option value="shoulder">Shoulder</option>
+            <option value="neck">Neck</option>
+            <option value="elbow">Elbow</option>
+            <option value="ankle">Ankle</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Primary Outcome</label>
+          <select id="priority-outcome">
+            <option value="" disabled selected>Select one</option>
+            <option value="reduce_pain">Reduce pain</option>
+            <option value="increase_mobility">Increase mobility</option>
+            <option value="return_to_sport">Return to sport</option>
+            <option value="posture_correction">Improve posture</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Pain Level (0–10)</label>
+          <input id="pain-level" type="range" min="0" max="10" step="1" value="5"/>
+          <div class="range-readout"><span id="pain-readout">5</span>/10</div>
+        </div>
+      </div>
+      <div class="cta-row">
+        <button id="generate-plan">Generate Plan with AI</button>
+        <button id="skip-to-consult" class="ghost">Prefer to consult a physiotherapist</button>
+      </div>
+    </section>
+
+    <!-- Step 3: Plan & Workouts -->
+    <section id="step-plan" class="card step">
+      <div class="plan-header">
+        <h2>Your Recovery Plan</h2>
+        <p id="plan-subtitle"></p>
+      </div>
+      <div id="workout-list" class="workout-list"></div>
+
+      <div class="plan-cta">
+        <button id="start-checkins">Start Daily Check-ins</button>
+        <button id="not-improving" class="warn">Not improving?</button>
+      </div>
+    </section>
+
+    <!-- Step 4: Check-ins -->
+    <section id="step-checkins" class="card step">
+      <h2>Daily Check-in</h2>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Today’s Pain (0–10)</label>
+          <input id="ci-pain" type="range" min="0" max="10" value="4"/>
+          <div class="range-readout"><span id="ci-pain-readout">4</span>/10</div>
+        </div>
+        <div class="form-row">
+          <label>Mobility</label>
+          <select id="ci-mobility">
+            <option value="worse">Worse</option>
+            <option value="same" selected>Same</option>
+            <option value="better">Better</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Adherence</label>
+          <select id="ci-adherence">
+            <option value="0">0%</option>
+            <option value="25">25%</option>
+            <option value="50">50%</option>
+            <option value="75">75%</option>
+            <option value="100">100%</option>
+          </select>
+        </div>
+      </div>
+      <div class="cta-row">
+        <button id="log-checkin">Log Check-in</button>
+      </div>
+
+      <div id="progress" class="progress">
+        <div class="progress-item"><div>Streak</div><div id="streak">0 days</div></div>
+        <div class="progress-item"><div>Avg Pain</div><div id="avg-pain">–</div></div>
+        <div class="progress-item"><div>Completion</div><div id="completion">–</div></div>
+      </div>
+
+      <div id="checkin-history" class="history"></div>
+
+      <div class="plan-cta">
+        <button id="view-physios" class="ghost">Consult a physiotherapist</button>
+      </div>
+    </section>
+
+    <!-- Step 5: Consult a physio -->
+    <section id="step-consult" class="card step">
+      <h2>Consult a Physiotherapist</h2>
+      <p>15-minute online consults. Click to initiate chat/call.</p>
+      <div id="physio-list" class="physio-list"></div>
+      <div class="cta-row"><button id="back-to-plan" class="ghost">Back to plan</button></div>
+    </section>
   </main>
+
   <footer class="app-footer">
     <div>© <span id="year"></span> FirstRep</div>
+    <div class="footer-links">
+      <a href="#" onclick="alert('Privacy Policy (placeholder)')">Privacy</a>
+      <a href="#" onclick="alert('Terms of Use (placeholder)')">Terms</a>
+    </div>
   </footer>
+
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
